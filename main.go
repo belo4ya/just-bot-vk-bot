@@ -1,70 +1,148 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/SevereCloud/vksdk/v2/api"
-	"github.com/go-joe/joe"
+	"github.com/SevereCloud/vksdk/v2/api/params"
+	"github.com/SevereCloud/vksdk/v2/events"
+	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
 	"github.com/joho/godotenv"
 	"github.com/robfig/cron/v3"
 	"log"
 	"os"
 	"time"
-
-	joeVk "github.com/tdakkota/joe-vk-adapter"
 )
 
-func registerHandlers(b *joe.Bot) {
-	b.Respond("ping", func(msg joe.Message) error {
-		msg.Respond("pong")
-		return nil
-	})
+type VkBot struct {
+	vk *api.VK
+	lp *longpoll.LongPoll
+	c  *cron.Cron
 }
 
-func registerCron(b *joe.Bot) {
-	task1 := func() {
-		vk := api.NewVK(os.Getenv("TOKEN"))
-		now := time.Now().Local().Format("15:04 02.01.2006")
-		msg := fmt.Sprintf("%s: task 1", now)
-		params := api.Params{
-			"peer_id":   510253487,
-			"message":   msg,
-			"random_id": 0,
-		}
-		if _, err := vk.MessagesSend(params); err != nil {
-			b.Logger.Fatal(err.Error())
-		}
+func NewVkBot(token string) *VkBot {
+	log.Printf("TOKEN: %s", token)
+	vk := api.NewVK(token)
+
+	group, err := vk.GroupsGetByID(nil)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	task2 := func() {
-		vkAdapter := b.Adapter.(*joeVk.BotAdapter)
-		now := time.Now().Local().Format("15:04 02.01.2006")
-		msg := fmt.Sprintf("%s: task 2", now)
-		if err := vkAdapter.Send(msg, "510253487"); err != nil {
-			b.Logger.Fatal(err.Error())
-		}
+	lp, err := longpoll.NewLongPoll(vk, group[0].ID)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	c := cron.New()
-	c.AddFunc("@every 5s", task1)
-	c.AddFunc("@every 15s", task2)
-	c.Start()
+
+	return &VkBot{
+		vk: vk,
+		lp: lp,
+		c:  c,
+	}
 }
+
+func (b *VkBot) AddHandler(pattern string, handler func(*VkBot, events.MessageNewObject)) {
+	b.lp.MessageNew(func(_ context.Context, obj events.MessageNewObject) {
+		if obj.Message.Text == pattern {
+			handler(b, obj)
+		}
+	})
+}
+
+func (b *VkBot) AddCronTask(spec string, task func(*VkBot) func()) (cron.EntryID, error) {
+	cmd := task(b)
+	return b.c.AddFunc(spec, cmd)
+}
+
+func (b *VkBot) Run() error {
+	b.c.Start()
+	return b.lp.Run()
+}
+
+func PingHandler(b *VkBot, obj events.MessageNewObject) {
+	p := params.NewMessagesSendBuilder()
+	p.Message("pong")
+	p.RandomID(0)
+	p.PeerID(obj.Message.PeerID)
+
+	if _, err := b.vk.MessagesSend(p.Params); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func HelloHandler(b *VkBot, obj events.MessageNewObject) {
+	p := params.NewMessagesSendBuilder()
+	p.Message("Hi !")
+	p.RandomID(0)
+	p.PeerID(obj.Message.PeerID)
+
+	if _, err := b.vk.MessagesSend(p.Params); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func CronTask(b *VkBot) func() {
+	return func() {
+		now := time.Now().Local().Format("15:04 02.01.2006")
+		msg := fmt.Sprintf("%s: task 1", now)
+
+		p := params.NewMessagesSendBuilder()
+		p.PeerID(510253487)
+		p.Message(msg)
+		p.RandomID(0)
+
+		if _, err := b.vk.MessagesSend(p.Params); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+//func registerCron(b *joe.Bot) {
+//	task1 := func() {
+//		vk := api.NewVK(os.Getenv("TOKEN"))
+//
+//		p := params.NewMessagesSendBuilder()
+//		conversations, err := vk.MessagesGetConversations(p.Params)
+//		if err != nil {
+//			b.Logger.Fatal(err.Error())
+//		}
+//		b.Logger.Info(fmt.Sprintf("Conversations: %+v", conversations))
+//
+//		now := time.Now().Local().Format("15:04 02.01.2006")
+//		msg := fmt.Sprintf("%s: task 1", now)
+//		p = params.NewMessagesSendBuilder()
+//		p.PeerID(510253487)
+//		p.Message(msg)
+//		p.RandomID(0)
+//		if _, err := vk.MessagesSend(p.Params); err != nil {
+//			b.Logger.Fatal(err.Error())
+//		}
+//	}
+//
+//	c := cron.New()
+//	c.AddFunc("@every 5s", task1)
+//	c.Start()
+//}
 
 func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-
 	token := os.Getenv("TOKEN")
-	log.Printf("TOKEN: %s", token)
 
-	b := joe.New("just-bot", joeVk.Adapter(token))
+	b := NewVkBot(token)
 
-	registerCron(b)
-	registerHandlers(b)
+	b.AddHandler("ping", PingHandler)
+	b.AddHandler("hello", HelloHandler)
+	if _, err := b.AddCronTask("@every 5s", CronTask); err != nil {
+		log.Fatal(err)
+	}
 
+	log.Println("Start Long Poll")
 	if err := b.Run(); err != nil {
-		b.Logger.Fatal(err.Error())
+		log.Fatal(err)
 	}
 }
