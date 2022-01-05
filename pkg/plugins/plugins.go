@@ -2,41 +2,31 @@ package plugins
 
 import (
 	"fmt"
+	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/api/params"
 	"github.com/SevereCloud/vksdk/v2/events"
 	"github.com/belo4ya/just-bot-vk-bot/pkg/bot"
-	fuapi "github.com/belo4ya/just-bot-vk-bot/pkg/fu-api"
 	"log"
 	"time"
 )
 
-func PingHandler(b *bot.Bot, obj events.MessageNewObject) {
+func PingHandler(vk *api.VK, obj events.MessageNewObject) {
 	p := params.NewMessagesSendBuilder()
-	p.Message("pong")
-	p.RandomID(0)
-	p.PeerID(obj.Message.PeerID)
-
-	if _, err := b.Vk.MessagesSend(p.Params); err != nil {
-		log.Fatal(err)
+	p.Message("Everything all right ☕").PeerID(obj.Message.PeerID).RandomID(bot.RandomID())
+	if _, err := vk.MessagesSend(p.Params); err != nil {
+		log.Fatalln(err)
 	}
 }
 
-func HelloHandler(b *bot.Bot, obj events.MessageNewObject) {
+func HelloHandler(vk *api.VK, obj events.MessageNewObject) {
 	p := params.NewMessagesSendBuilder()
-	p.Message("Hi !")
-	p.RandomID(0)
-	p.PeerID(obj.Message.PeerID)
-
-	if _, err := b.Vk.MessagesSend(p.Params); err != nil {
-		log.Fatal(err)
+	p.Message("👋").PeerID(obj.Message.PeerID).RandomID(bot.RandomID())
+	if _, err := vk.MessagesSend(p.Params); err != nil {
+		log.Fatalln(err)
 	}
 }
 
-func ApiHandler(b *bot.Bot, obj events.MessageNewObject) {
-	fuapi.GetGroup("ПИ19-3")
-}
-
-func CronTask(b *bot.Bot) func() {
+func CronTask(vk *api.VK) func() {
 	return func() {
 		now := time.Now().Local().Format("15:04 02.01.2006")
 		msg := fmt.Sprintf("%s: task 1", now)
@@ -46,8 +36,8 @@ func CronTask(b *bot.Bot) func() {
 		p.Message(msg)
 		p.RandomID(0)
 
-		if _, err := b.Vk.MessagesSend(p.Params); err != nil {
-			log.Fatal(err)
+		if _, err := vk.MessagesSend(p.Params); err != nil {
+			log.Fatalln(err)
 		}
 	}
 }

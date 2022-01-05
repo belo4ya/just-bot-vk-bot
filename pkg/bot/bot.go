@@ -7,37 +7,45 @@ import (
 	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
 	"github.com/robfig/cron/v3"
 	"log"
+	"math/rand"
+	"time"
 )
 
 type (
-	Handler  func(*Bot, events.MessageNewObject)
-	CronTask func(*Bot) func()
+	Handler  func(*api.VK, events.MessageNewObject)
+	CronTask func(*api.VK) func()
 )
 
 type Bot struct {
-	Vk *api.VK
+	vk *api.VK
 	lp *longpoll.LongPoll
 	c  *cron.Cron
 }
 
 func NewBot(token string) *Bot {
-	log.Printf("TOKEN: %s", token)
+	seed := time.Now().UnixNano()
+	rand.Seed(seed)
+	log.Printf("seed: %d", seed)
+
+	log.Printf("token: %s", token)
 	vk := api.NewVK(token)
 
 	group, err := vk.GroupsGetByID(nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
+	groupID := group[0].ID
+	log.Printf("group_id: %d", groupID)
 
-	lp, err := longpoll.NewLongPoll(vk, group[0].ID)
+	lp, err := longpoll.NewLongPoll(vk, groupID)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 
 	c := cron.New()
 
 	return &Bot{
-		Vk: vk,
+		vk: vk,
 		lp: lp,
 		c:  c,
 	}
@@ -46,17 +54,21 @@ func NewBot(token string) *Bot {
 func (b *Bot) AddHandler(pattern string, handler Handler) {
 	b.lp.MessageNew(func(_ context.Context, obj events.MessageNewObject) {
 		if obj.Message.Text == pattern {
-			handler(b, obj)
+			handler(b.vk, obj)
 		}
 	})
 }
 
 func (b *Bot) AddCronTask(spec string, task CronTask) (cron.EntryID, error) {
-	cmd := task(b)
+	cmd := task(b.vk)
 	return b.c.AddFunc(spec, cmd)
 }
 
 func (b *Bot) Run() error {
 	b.c.Start()
 	return b.lp.Run()
+}
+
+func RandomID() int {
+	return int(rand.Int31())
 }

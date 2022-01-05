@@ -11,7 +11,7 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatalln("Error loading .env file")
 	}
 	token := os.Getenv("TOKEN")
 
@@ -19,13 +19,14 @@ func main() {
 
 	b.AddHandler("ping", plugins.PingHandler)
 	b.AddHandler("hello", plugins.HelloHandler)
-	b.AddHandler("api", plugins.ApiHandler)
+	b.AddHandler("schedule", plugins.NewSubscriber().Handler())
+
 	if _, err := b.AddCronTask("@every 20s", plugins.CronTask); err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 
 	log.Println("Start Long Poll")
 	if err := b.Run(); err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 }
