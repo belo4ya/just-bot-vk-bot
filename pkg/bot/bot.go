@@ -9,6 +9,11 @@ import (
 	"log"
 )
 
+type (
+	Handler  func(*Bot, events.MessageNewObject)
+	CronTask func(*Bot) func()
+)
+
 type Bot struct {
 	Vk *api.VK
 	lp *longpoll.LongPoll
@@ -38,7 +43,7 @@ func NewBot(token string) *Bot {
 	}
 }
 
-func (b *Bot) AddHandler(pattern string, handler func(*Bot, events.MessageNewObject)) {
+func (b *Bot) AddHandler(pattern string, handler Handler) {
 	b.lp.MessageNew(func(_ context.Context, obj events.MessageNewObject) {
 		if obj.Message.Text == pattern {
 			handler(b, obj)
@@ -46,7 +51,7 @@ func (b *Bot) AddHandler(pattern string, handler func(*Bot, events.MessageNewObj
 	})
 }
 
-func (b *Bot) AddCronTask(spec string, task func(*Bot) func()) (cron.EntryID, error) {
+func (b *Bot) AddCronTask(spec string, task CronTask) (cron.EntryID, error) {
 	cmd := task(b)
 	return b.c.AddFunc(spec, cmd)
 }

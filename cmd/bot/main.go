@@ -19,7 +19,8 @@ func main() {
 
 	b.AddHandler("ping", plugins.PingHandler)
 	b.AddHandler("hello", plugins.HelloHandler)
-	if _, err := b.AddCronTask("@every 5s", plugins.CronTask); err != nil {
+	b.AddHandler("api", plugins.ApiHandler)
+	if _, err := b.AddCronTask("@every 20s", plugins.CronTask); err != nil {
 		log.Fatal(err)
 	}
 

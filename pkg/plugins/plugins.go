@@ -5,6 +5,7 @@ import (
 	"github.com/SevereCloud/vksdk/v2/api/params"
 	"github.com/SevereCloud/vksdk/v2/events"
 	"github.com/belo4ya/just-bot-vk-bot/pkg/bot"
+	fuapi "github.com/belo4ya/just-bot-vk-bot/pkg/fu-api"
 	"log"
 	"time"
 )
@@ -29,6 +30,10 @@ func HelloHandler(b *bot.Bot, obj events.MessageNewObject) {
 	if _, err := b.Vk.MessagesSend(p.Params); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func ApiHandler(b *bot.Bot, obj events.MessageNewObject) {
+	fuapi.GetGroup("ПИ19-3")
 }
 
 func CronTask(b *bot.Bot) func() {
