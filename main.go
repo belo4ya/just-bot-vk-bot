@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/go-joe/joe"
 	"github.com/joho/godotenv"
 	"github.com/robfig/cron/v3"
@@ -19,18 +21,32 @@ func registerHandlers(b *joe.Bot) {
 }
 
 func registerCron(b *joe.Bot) {
-	vkAdapter := b.Adapter.(*joeVk.BotAdapter)
-
-	c := cron.New()
-	entryID, err := c.AddFunc("@every 15s", func() {
-		if err := vkAdapter.Send(time.Now().Local().Format("15:04 02.01.2006"), "510253487"); err != nil {
+	task1 := func() {
+		vk := api.NewVK(os.Getenv("TOKEN"))
+		now := time.Now().Local().Format("15:04 02.01.2006")
+		msg := fmt.Sprintf("%s: task 1", now)
+		params := api.Params{
+			"peer_id":   510253487,
+			"message":   msg,
+			"random_id": 0,
+		}
+		if _, err := vk.MessagesSend(params); err != nil {
 			b.Logger.Fatal(err.Error())
 		}
-	})
-	if err != nil {
-		b.Logger.Fatal(err.Error())
 	}
-	log.Printf("EntryID: %d", entryID)
+
+	task2 := func() {
+		vkAdapter := b.Adapter.(*joeVk.BotAdapter)
+		now := time.Now().Local().Format("15:04 02.01.2006")
+		msg := fmt.Sprintf("%s: task 2", now)
+		if err := vkAdapter.Send(msg, "510253487"); err != nil {
+			b.Logger.Fatal(err.Error())
+		}
+	}
+
+	c := cron.New()
+	c.AddFunc("@every 5s", task1)
+	c.AddFunc("@every 15s", task2)
 	c.Start()
 }
 
