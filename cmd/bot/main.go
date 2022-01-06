@@ -21,10 +21,6 @@ func main() {
 	b.AddHandler("hello", plugins.HelloHandler)
 	plugins.TeamsInit(b)
 
-	if _, err := b.AddCronTask("@every 30s", plugins.CronTask); err != nil {
-		log.Fatalln(err)
-	}
-
 	log.Println("Start Long Poll")
 	if err := b.Run(); err != nil {
 		log.Fatalln(err)

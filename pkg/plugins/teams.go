@@ -3,13 +3,11 @@ package plugins
 import (
 	"fmt"
 	"github.com/SevereCloud/vksdk/v2/api/params"
-	"github.com/SevereCloud/vksdk/v2/events"
-	vkBot "github.com/belo4ya/just-bot-vk-bot/pkg/bot"
-	"github.com/belo4ya/just-bot-vk-bot/pkg/fu-api"
+	vk "github.com/belo4ya/just-bot-vk-bot/pkg/bot"
+	"github.com/belo4ya/just-bot-vk-bot/pkg/fuapi"
 	"gorm.io/gorm"
 	"log"
 	"math/rand"
-	"strings"
 	"time"
 )
 
@@ -43,43 +41,53 @@ func NewSubscriber(repo *TaskRepo) *Subscriber {
 	}
 }
 
-func (s *Subscriber) Handler() vkBot.Handler {
-	return func(bot *vkBot.Bot, obj events.MessageNewObject) {
-		group, err := fuapi.GetGroup(s.GroupName)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		schedule, err := fuapi.GetGroupSchedule(
-			group.ID,
-			time.Date(2021, 12, 27, 0, 0, 0, 0, time.Local),
-			time.Date(2021, 12, 27, 0, 0, 0, 0, time.Local),
-		)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		var b strings.Builder
-		for _, item := range *schedule {
-			if item.URL1 != "" {
-				b.WriteString(fmt.Sprintf("⏱%s - %s⏱\n", item.BeginLesson, item.EndLesson))
-				b.WriteString(item.Discipline + "\n")
-				b.WriteString(item.KindOfWork + "\n")
-				b.WriteString("Кто: " + item.Lecturer + "\n")
-				b.WriteString("Где: " + item.URL1 + "\n")
-				b.WriteString(choiceNote(notes) + "\n\n")
+func (s *Subscriber) Task() vk.CronTask {
+	return func(b *vk.Bot) func() {
+		return func() {
+			group, err := fuapi.GetGroup(s.GroupName)
+			if err != nil {
+				log.Fatalln(err)
 			}
-		}
 
-		p := params.NewMessagesSendBuilder()
-		p.Message(b.String()).PeerID(s.ChatID).RandomID(vkBot.RandomID())
+			schedule, err := fuapi.GetGroupSchedule(
+				group.ID,
+				time.Date(2021, 12, 27, 0, 0, 0, 0, time.Local),
+				time.Date(2021, 12, 27, 0, 0, 0, 0, time.Local),
+			)
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-		if err := s.repo.SaveTask(&Task{SendAt: time.Now(), Message: b.String()}); err != nil {
-			log.Fatalln(err)
-		}
+			for _, item := range *schedule {
+				if item.URL1 != "" {
+					dur := time.Duration(rand.Intn(20-3)+3) * time.Second
+					msg := fmt.Sprintf("⏱%s - %s⏱\n", item.BeginLesson, item.EndLesson) +
+						item.Discipline + "\n" +
+						item.KindOfWork + "\n" +
+						"Кто: " + item.Lecturer + "\n" +
+						"Где: " + item.URL1 + "\n" +
+						choiceNote(notes)
 
-		if _, err := bot.VK.MessagesSend(p.Params); err != nil {
-			log.Fatalln(err)
+					time.AfterFunc(dur, func() {
+						p := params.NewMessagesSendBuilder()
+						p.Message(fmt.Sprintf(msg)).PeerID(s.ChatID).RandomID(vk.RandomID())
+						if _, err := b.VK.MessagesSend(p.Params); err != nil {
+							log.Fatalln(err)
+						}
+					})
+
+					if err := s.repo.SaveTask(&Task{SendAt: time.Now().Add(dur), Message: msg}); err != nil {
+						log.Fatalln(err)
+					}
+				}
+			}
+
+			p := params.NewMessagesSendBuilder()
+			p.Message("Ok").PeerID(s.ChatID).RandomID(vk.RandomID())
+
+			if _, err := b.VK.MessagesSend(p.Params); err != nil {
+				log.Fatalln(err)
+			}
 		}
 	}
 }
@@ -102,10 +110,13 @@ func (r TaskRepo) SaveTask(t *Task) error {
 	return r.db.Create(t).Error
 }
 
-func TeamsInit(b *vkBot.Bot) {
+func TeamsInit(b *vk.Bot) {
 	if err := b.DB.AutoMigrate(&Task{}); err != nil {
 		log.Fatalln(err)
 	}
-	taskRepo := NewTaskRepo(b.DB)
-	b.AddHandler("schedule", NewSubscriber(taskRepo).Handler())
+
+	_, err := b.AddCronTask("55 03 * * *", NewSubscriber(NewTaskRepo(b.DB)).Task())
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
