@@ -26,7 +26,7 @@ func (p *Plugin) Apply(b *vk.Bot) {
 	p.subscribers = append(p.subscribers, s)
 
 	//_, err := b.AddCronTask("@every 30s", s.CronTask())
-	_, err := b.AddCronTask("55 03 * * *", s.CronTask())
+	_, err := b.AddCronTask("55 00 * * *", s.CronTask()) // "55 03 * * *" (UTC+3)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -55,11 +55,7 @@ func (s *Subscriber) CronTask() vk.CronTask {
 			log.Fatalln(err)
 		}
 
-		schedule, err := fuapi.GetGroupSchedule(
-			group.ID,
-			time.Date(2021, 12, 27, 0, 0, 0, 0, time.Local),
-			time.Date(2021, 12, 27, 0, 0, 0, 0, time.Local),
-		)
+		schedule, err := fuapi.GetGroupSchedule(group.ID, time.Now().UTC(), time.Now().UTC())
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -123,7 +119,7 @@ func (s *Subscriber) startAt(beginLesson string) time.Time {
 	for i, s := range strings.Split(beginLesson, ":") {
 		start[i], _ = strconv.Atoi(s)
 	}
-	now := time.Now()
+	now := time.Now().UTC()
 	return time.Date(now.Year(), now.Month(), now.Day(), start[0], start[1], 0, 0, time.Local)
 }
 
@@ -132,6 +128,6 @@ func (s *Subscriber) sendAt(startAt time.Time) time.Time {
 }
 
 func (s *Subscriber) duration(sendAt time.Time) time.Duration {
-	return sendAt.Sub(time.Now())
+	return sendAt.Sub(time.Now().UTC())
 	//return time.Duration(rand.Intn(20-3)+3) * time.Second
 }

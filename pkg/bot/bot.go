@@ -48,7 +48,7 @@ func NewBot(token string) *Bot {
 		log.Fatalln(err)
 	}
 
-	c := cron.New()
+	c := cron.New(cron.WithLocation(time.UTC))
 
 	db, err := gorm.Open(sqlite.Open("sqlite.db"), &gorm.Config{})
 	if err != nil {
