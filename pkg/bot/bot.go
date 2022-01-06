@@ -15,7 +15,10 @@ import (
 
 type (
 	Handler  func(*Bot, events.MessageNewObject)
-	CronTask func(*Bot) func()
+	CronTask func()
+	Plugin   interface {
+		Apply(b *Bot)
+	}
 )
 
 type Bot struct {
@@ -60,6 +63,16 @@ func NewBot(token string) *Bot {
 	}
 }
 
+func (b *Bot) AddPlugin(plugin Plugin) {
+	plugin.Apply(b)
+}
+
+func (b *Bot) AddPlugins(plugins ...Plugin) {
+	for _, p := range plugins {
+		p.Apply(b)
+	}
+}
+
 func (b *Bot) AddHandler(pattern string, handler Handler) {
 	b.lp.MessageNew(func(_ context.Context, obj events.MessageNewObject) {
 		if obj.Message.Text == pattern {
@@ -69,8 +82,7 @@ func (b *Bot) AddHandler(pattern string, handler Handler) {
 }
 
 func (b *Bot) AddCronTask(spec string, task CronTask) (cron.EntryID, error) {
-	cmd := task(b)
-	return b.c.AddFunc(spec, cmd)
+	return b.c.AddFunc(spec, task)
 }
 
 func (b *Bot) Run() error {

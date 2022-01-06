@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/belo4ya/just-bot-vk-bot/pkg/bot"
 	"github.com/belo4ya/just-bot-vk-bot/pkg/plugins"
+	"github.com/belo4ya/just-bot-vk-bot/pkg/plugins/msteams"
 	"github.com/joho/godotenv"
 	"log"
 	"os"
@@ -19,7 +20,8 @@ func main() {
 
 	b.AddHandler("ping", plugins.PingHandler)
 	b.AddHandler("hello", plugins.HelloHandler)
-	plugins.TeamsInit(b)
+
+	b.AddPlugin(&msteams.MsTeams{})
 
 	log.Println("Start Long Poll")
 	if err := b.Run(); err != nil {
