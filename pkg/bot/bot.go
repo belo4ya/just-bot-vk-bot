@@ -14,7 +14,7 @@ import (
 )
 
 type (
-	Handler  func(*Bot, events.MessageNewObject)
+	Handler  func(events.MessageNewObject)
 	CronTask func()
 	Plugin   interface {
 		Apply(b *Bot)
@@ -76,7 +76,7 @@ func (b *Bot) AddPlugins(plugins ...Plugin) {
 func (b *Bot) AddHandler(pattern string, handler Handler) {
 	b.lp.MessageNew(func(_ context.Context, obj events.MessageNewObject) {
 		if obj.Message.Text == pattern {
-			handler(b, obj)
+			handler(obj)
 		}
 	})
 }

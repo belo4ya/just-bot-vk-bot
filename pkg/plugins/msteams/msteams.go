@@ -8,23 +8,22 @@ import (
 	"github.com/belo4ya/just-bot-vk-bot/pkg/fuapi"
 	"gorm.io/gorm"
 	"log"
-	"math/rand"
 	"strconv"
 	"strings"
 	"time"
 )
 
-type MsTeams struct {
+type Plugin struct {
 	subscribers []*Subscriber
 }
 
-func (m *MsTeams) Apply(b *vk.Bot) {
+func (p *Plugin) Apply(b *vk.Bot) {
 	if err := b.DB.AutoMigrate(&Task{}); err != nil {
 		log.Fatalln(err)
 	}
 
 	s := NewSubscriber(b)
-	m.subscribers = append(m.subscribers, s)
+	p.subscribers = append(p.subscribers, s)
 
 	_, err := b.AddCronTask("@every 30s", s.CronTask()) // "55 03 * * *"
 	if err != nil {
@@ -132,6 +131,6 @@ func (s *Subscriber) sendAt(startAt time.Time) time.Time {
 }
 
 func (s *Subscriber) duration(sendAt time.Time) time.Duration {
-	//return sendAt.Sub(time.Now())
-	return time.Duration(rand.Intn(20-3)+3) * time.Second
+	return sendAt.Sub(time.Now())
+	//return time.Duration(rand.Intn(20-3)+3) * time.Second
 }
