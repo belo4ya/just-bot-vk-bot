@@ -25,7 +25,8 @@ func (p *Plugin) Apply(b *vk.Bot) {
 	s := NewSubscriber(b)
 	p.subscribers = append(p.subscribers, s)
 
-	_, err := b.AddCronTask("@every 30s", s.CronTask()) // "55 03 * * *"
+	//_, err := b.AddCronTask("@every 30s", s.CronTask())
+	_, err := b.AddCronTask("55 03 * * *", s.CronTask())
 	if err != nil {
 		log.Fatalln(err)
 	}
