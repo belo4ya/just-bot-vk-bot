@@ -6,20 +6,23 @@ import (
 	"github.com/SevereCloud/vksdk/v2/events"
 	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
 	"github.com/robfig/cron/v3"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	"log"
 	"math/rand"
 	"time"
 )
 
 type (
-	Handler  func(*api.VK, events.MessageNewObject)
-	CronTask func(*api.VK) func()
+	Handler  func(*Bot, events.MessageNewObject)
+	CronTask func(*Bot) func()
 )
 
 type Bot struct {
-	vk *api.VK
+	VK *api.VK
 	lp *longpoll.LongPoll
 	c  *cron.Cron
+	DB *gorm.DB
 }
 
 func NewBot(token string) *Bot {
@@ -44,23 +47,29 @@ func NewBot(token string) *Bot {
 
 	c := cron.New()
 
+	db, err := gorm.Open(sqlite.Open("sqlite.db"), &gorm.Config{})
+	if err != nil {
+		log.Fatalln("failed to connect database")
+	}
+
 	return &Bot{
-		vk: vk,
+		VK: vk,
 		lp: lp,
 		c:  c,
+		DB: db,
 	}
 }
 
 func (b *Bot) AddHandler(pattern string, handler Handler) {
 	b.lp.MessageNew(func(_ context.Context, obj events.MessageNewObject) {
 		if obj.Message.Text == pattern {
-			handler(b.vk, obj)
+			handler(b, obj)
 		}
 	})
 }
 
 func (b *Bot) AddCronTask(spec string, task CronTask) (cron.EntryID, error) {
-	cmd := task(b.vk)
+	cmd := task(b)
 	return b.c.AddFunc(spec, cmd)
 }
 

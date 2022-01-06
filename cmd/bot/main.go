@@ -19,9 +19,9 @@ func main() {
 
 	b.AddHandler("ping", plugins.PingHandler)
 	b.AddHandler("hello", plugins.HelloHandler)
-	b.AddHandler("schedule", plugins.NewSubscriber().Handler())
+	plugins.TeamsInit(b)
 
-	if _, err := b.AddCronTask("@every 20s", plugins.CronTask); err != nil {
+	if _, err := b.AddCronTask("@every 30s", plugins.CronTask); err != nil {
 		log.Fatalln(err)
 	}
 
