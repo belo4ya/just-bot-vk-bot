@@ -2,7 +2,6 @@ package msteams
 
 import (
 	"errors"
-	"fmt"
 	"github.com/SevereCloud/vksdk/v2/api/params"
 	vk "github.com/belo4ya/just-bot-vk-bot/pkg/bot"
 	"github.com/belo4ya/just-bot-vk-bot/pkg/fuapi"
@@ -26,6 +25,7 @@ func (p *Plugin) Apply(b *vk.Bot) {
 	p.subscribers = append(p.subscribers, s)
 
 	//_, err := b.AddCronTask("@every 30s", s.CronTask())
+	//_, err := b.AddCronTask("58 12 * * *", s.CronTask())
 	_, err := b.AddCronTask("55 00 * * *", s.CronTask()) // "55 03 * * *" (UTC+3)
 	if err != nil {
 		log.Fatalln(err)
@@ -43,7 +43,7 @@ func NewSubscriber(b *vk.Bot) *Subscriber {
 	return &Subscriber{
 		ChatID:    2000000001,
 		GroupName: "ПИ19-3",
-		Delay:     -5 * time.Minute,
+		Delay:     -4 * time.Minute,
 		bot:       b,
 	}
 }
@@ -106,7 +106,7 @@ func (s *Subscriber) Task(taskID uint) func() {
 		}
 
 		p := params.NewMessagesSendBuilder()
-		p.Message(fmt.Sprintf(task.Message)).PeerID(s.ChatID).RandomID(vk.RandomID())
+		p.Message(task.Message).DontParseLinks(true).PeerID(s.ChatID).RandomID(vk.RandomID())
 		if _, err := s.bot.VK.MessagesSend(p.Params); err != nil {
 			log.Fatalln(err)
 		}
