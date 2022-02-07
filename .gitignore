@@ -1,2 +1,5 @@
 .idea/
 .env
+
+main.exe
+sqlite.db
